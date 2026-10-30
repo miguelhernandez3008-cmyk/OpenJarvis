@@ -232,6 +232,32 @@ class WhatsAppBaileysChannel(BaseChannel):
             logger.debug("WhatsApp Baileys send failed", exc_info=True)
             return False
 
+    def send_voice(self, channel: str, audio: bytes, *, caption: str = "") -> bool:
+        """Send *audio* (OGG/Opus bytes) to a WhatsApp JID as a voice note.
+
+        WhatsApp voice notes carry no caption; *caption* is accepted for
+        interface parity with other channels and ignored.
+        """
+        if self._process is None or self._status != ChannelStatus.CONNECTED:
+            logger.warning("Cannot send voice: bridge not connected")
+            return False
+        if not audio:
+            return False
+        try:
+            import base64
+
+            self._write_command(
+                {
+                    "type": "send_voice",
+                    "jid": channel,
+                    "audio": base64.b64encode(audio).decode("ascii"),
+                }
+            )
+            return True
+        except Exception:
+            logger.debug("WhatsApp Baileys send_voice failed", exc_info=True)
+            return False
+
     def status(self) -> ChannelStatus:
         """Return the current connection status."""
         return self._status

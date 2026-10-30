@@ -228,6 +228,31 @@ class TelegramChannel(BaseChannel):
             logger.debug("Telegram send failed", exc_info=True)
             return False
 
+    def send_voice(self, channel: str, audio: bytes, *, caption: str = "") -> bool:
+        """Send *audio* (OGG/Opus bytes) as a Telegram voice note."""
+        if not self._token or not audio:
+            return False
+        try:
+            import httpx
+
+            url = f"https://api.telegram.org/bot{self._token}/sendVoice"
+            data: Dict[str, Any] = {"chat_id": channel}
+            if caption:
+                data["caption"] = caption[:1024]  # Telegram's caption limit
+            files = {"voice": ("jarvis.ogg", audio, "audio/ogg")}
+            resp = httpx.post(url, data=data, files=files, timeout=30.0)
+            if resp.status_code >= 300:
+                logger.warning(
+                    "Telegram sendVoice returned status %d: %s",
+                    resp.status_code,
+                    resp.text,
+                )
+                return False
+            return True
+        except Exception:
+            logger.debug("Telegram send_voice failed", exc_info=True)
+            return False
+
     def status(self) -> ChannelStatus:
         """Return the current connection status."""
         return self._status

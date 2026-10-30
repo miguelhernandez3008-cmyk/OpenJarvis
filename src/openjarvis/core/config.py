@@ -1782,6 +1782,8 @@ class JarvisAgentsConfig:
     email_channel: str = ""
     email_sources: List[str] = field(default_factory=lambda: ["gmail"])
     email_hours_back: int = 6
+    voice_notes: bool = True  # also send each alert as a voice note
+    voice_id: str = "em_alex"  # Kokoro voice (ef_dora = female Spanish)
 
 
 @dataclass

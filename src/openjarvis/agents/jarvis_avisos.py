@@ -106,8 +106,52 @@ def _has_target(spec: str) -> bool:
     return bool(channel_type and target.strip())
 
 
-def send_notification(spec: str, text: str) -> bool:
+def _text_for_speech(text: str) -> str:
+    """Strip markdown markers, bullets and emojis so TTS reads only words."""
+    text = re.sub(r"[*_~`#>]", "", text)
+    text = re.sub(r"^\s*[•\-–]\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]", "", text)
+    text = text.replace(" — ", ", ")
+    return re.sub(r"[ \t]+", " ", text).strip()
+
+
+def voice_note(text: str, voice_id: str = "em_alex", speed: float = 1.0) -> bytes:
+    """Render *text* as an OGG/Opus voice note with the local Kokoro voice.
+
+    Returns ``b""`` when the voice is not installed or synthesis fails, so
+    callers can always fall back to text-only delivery.
+    """
+    spoken = _text_for_speech(text)
+    if not spoken:
+        return b""
+    try:
+        import io
+
+        import soundfile as sf
+
+        from openjarvis.speech.kokoro_tts import KokoroTTSBackend
+
+        wav = KokoroTTSBackend().synthesize(spoken, voice_id=voice_id, speed=speed)
+        if not wav.audio:
+            return b""
+        samples, rate = sf.read(io.BytesIO(wav.audio), dtype="float32")
+        out = io.BytesIO()
+        # Telegram and WhatsApp only render OGG/Opus as a playable voice note.
+        sf.write(out, samples, rate, format="OGG", subtype="OPUS")
+        return out.getvalue()
+    except Exception:
+        logger.warning(
+            "Jarvis: voice note unavailable, sending text only", exc_info=True
+        )
+        return b""
+
+
+def send_notification(spec: str, text: str, voice: bytes = b"") -> bool:
     """Send *text* to the ``"{type}:{id}"`` destination *spec*.
+
+    When *voice* (OGG/Opus bytes) is given and the channel supports it, a
+    voice note follows the text. Success depends on the text alone, so a
+    failed voice note never causes a retry.
 
     Returns ``False`` (and logs why) instead of raising, so a delivery problem
     never crashes the scheduled tick.
@@ -134,8 +178,12 @@ def send_notification(spec: str, text: str) -> bool:
             ):
                 time.sleep(0.5)
         ok = channel.send(target, text)
+        if ok and voice and hasattr(channel, "send_voice"):
+            if not channel.send_voice(target, voice):
+                logger.warning("Jarvis: voice note to %r failed", spec)
         if spec.startswith("whatsapp_baileys:"):
-            time.sleep(3)  # let the bridge flush the message before closing
+            # Let the bridge flush (and upload any audio) before closing.
+            time.sleep(8 if voice else 3)
         return bool(ok)
     except Exception:
         logger.warning("Jarvis: failed to send to %r", spec, exc_info=True)
@@ -169,6 +217,11 @@ class _JarvisNotifier(ToolUsingAgent):
         ]
         result = self._generate(messages)
         return self._strip_think_tags(result.get("content", "")).strip()
+
+    def _voice(self, text: str) -> bytes:
+        if not self._cfg.voice_notes:
+            return b""
+        return voice_note(text, voice_id=self._cfg.voice_id)
 
     def _finish(
         self, content: str, *, sent: bool, destination: str, **meta: Any
@@ -209,7 +262,9 @@ class JarvisSaludAgent(_JarvisNotifier):
             name=_user_name(profile), date=_format_date(datetime.now(), "es")
         )
         text = self._write(prompt, data)
-        sent = bool(text) and send_notification(destination, text)
+        sent = bool(text) and send_notification(
+            destination, text, voice=self._voice(text)
+        )
         return self._finish(text, sent=sent, destination=destination)
 
 
@@ -298,7 +353,7 @@ class JarvisCorreosAgent(_JarvisNotifier):
         sent = False
         important = bool(text) and text.strip(" .") != _NOTHING
         if important:
-            sent = send_notification(destination, text)
+            sent = send_notification(destination, text, voice=self._voice(text))
         # Remember the batch unless an alert was due but could not be sent,
         # so a delivery failure is retried on the next tick.
         if sent or not important:
@@ -309,4 +364,4 @@ class JarvisCorreosAgent(_JarvisNotifier):
         )
 
 
-__all__ = ["JarvisCorreosAgent", "JarvisSaludAgent", "send_notification"]
+__all__ = ["JarvisCorreosAgent", "JarvisSaludAgent", "send_notification", "voice_note"]

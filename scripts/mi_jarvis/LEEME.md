@@ -9,6 +9,11 @@ Esta configuración deja a Jarvis:
   - 🩺 **Salud**: cada mañana a las 7:00 te manda por Telegram un mensaje de salud (tu calendario, el clima y tus metas).
   - 📬 **Correos**: cada 30 minutos revisa tu Gmail y te avisa por WhatsApp **solo** de los correos importantes. Nunca repite uno que ya te avisó.
 
+Los avisos llegan como **texto y nota de voz** (con la voz en español de Jarvis), si instalaste la voz.
+
+> **¿Usas Chromebook o Linux?** Sigue la sección [Chromebook / Linux](#chromebook--linux) al final:
+> los pasos son los mismos, pero cambian algunos comandos.
+
 ---
 
 ## 1. Instala los programas base (una sola vez)
@@ -146,3 +151,20 @@ Los originales están en esta carpeta (`scripts/mi_jarvis/`) y en `configs/openj
 Puedes volver a ejecutar `instalar.py` cuando quieras: **conserva** tu `config.toml`, `SOUL.md` y `USER.md`
 y solo actualiza los agentes. Para volver a los originales usa `instalar.py --forzar`; antes guarda una copia
 de respaldo de tus archivos (`*.respaldo-…`).
+
+---
+
+## Chromebook / Linux
+
+Todo se hace en la **terminal de Linux**. Cambia estos pasos:
+
+| Paso | En Chromebook / Linux |
+|---|---|
+| 1. Programas base | `sudo apt update && sudo apt install -y git curl`, luego `curl -LsSf https://astral.sh/uv/install.sh \| sh`, `curl -fsSL https://deb.nodesource.com/setup_22.x \| sudo -E bash -` y `sudo apt install -y nodejs` |
+| 2. Descargar | `git clone -b personalizacion-es https://github.com/miguelhernandez3008-cmyk/OpenJarvis.git ~/OpenJarvis`, luego `cd ~/OpenJarvis` y `uv sync --extra inference-cloud --extra channel-telegram --extra server` |
+| Voz (opcional) | `sudo apt install -y espeak-ng libportaudio2` y `uv pip install --torch-backend cpu "kokoro>=0.9" soundfile sounddevice`. Pruébala con `uv run python scripts/mi_jarvis/probar_voz.py` |
+| 3 y 4. Guardar claves | En vez de `setx`, agrégalas al final de `~/.bashrc`: `echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.bashrc` (igual con `TELEGRAM_BOT_TOKEN`) y luego `source ~/.bashrc` |
+| Editar archivos | En vez de `notepad`, usa `nano ~/.openjarvis/config.toml` (guardar: Ctrl+O y Enter; salir: Ctrl+X) |
+
+> Si vuelves a ejecutar `uv sync`, se borra la voz: repite el comando `uv pip install` de arriba.
+> En Chromebook, Jarvis solo funciona mientras el equipo está encendido y la terminal de Linux abierta.

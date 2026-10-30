@@ -82,6 +82,8 @@ health_sources = ["gcalendar", "weather"]       # Agrega "oura" si tienes anillo
 email_channel = "whatsapp_baileys:"             # Avisos de correos importantes
 email_sources = ["gmail"]
 email_hours_back = 6
+voice_notes = true                              # Además del texto, manda nota de voz
+voice_id = "em_alex"                            # ef_dora = voz femenina
 
 [agent_manager]
 enabled = true

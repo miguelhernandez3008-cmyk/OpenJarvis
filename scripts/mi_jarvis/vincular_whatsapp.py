@@ -32,9 +32,11 @@ def main() -> None:
     cfg = load_config()
     canal = WhatsAppBaileysChannel(auth_dir=cfg.channel.whatsapp_baileys.auth_dir)
 
-    # 1. Compilar el puente de WhatsApp si hace falta.
-    if not (_BRIDGE_SRC / "dist" / "bridge.js").exists():
-        print("Compilando el puente de WhatsApp (solo la primera vez)…")
+    # 1. Compilar el puente de WhatsApp si falta o si el código es más nuevo.
+    compilado = _BRIDGE_SRC / "dist" / "bridge.js"
+    fuente = _BRIDGE_SRC / "src" / "bridge.ts"
+    if not compilado.exists() or fuente.stat().st_mtime > compilado.stat().st_mtime:
+        print("Compilando el puente de WhatsApp…")
         npm("install", "--no-audit", "--no-fund", cwd=str(_BRIDGE_SRC))
         npm("run", "build", cwd=str(_BRIDGE_SRC))
     runtime = canal._runtime_dir

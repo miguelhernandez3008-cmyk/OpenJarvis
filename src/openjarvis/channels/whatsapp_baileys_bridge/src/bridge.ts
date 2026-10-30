@@ -5,6 +5,7 @@
  *
  * Input commands (stdin):
  *   {"type":"send","jid":"<jid>","text":"<message>"}
+ *   {"type":"send_voice","jid":"<jid>","audio":"<base64 OGG/Opus>"}
  *   {"type":"disconnect"}
  *
  * Output events (stdout):
@@ -132,6 +133,17 @@ async function main(): Promise<void> {
         await sock.sendMessage(cmd.jid as string, { text: cmd.text as string });
       } catch (err: any) {
         emit({ type: "error", message: `Send failed: ${err.message}` });
+      }
+    } else if (cmd.type === "send_voice" && sock) {
+      // Voice note: base64 OGG/Opus audio, shown as a playable "ptt" bubble.
+      try {
+        await sock.sendMessage(cmd.jid as string, {
+          audio: Buffer.from(cmd.audio as string, "base64"),
+          mimetype: "audio/ogg; codecs=opus",
+          ptt: true,
+        });
+      } catch (err: any) {
+        emit({ type: "error", message: `Send voice failed: ${err.message}` });
       }
     } else if (cmd.type === "disconnect") {
       if (sock) {
