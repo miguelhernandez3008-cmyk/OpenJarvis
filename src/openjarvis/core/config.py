@@ -1747,6 +1747,7 @@ class DigestConfig:
         default_factory=lambda: ["github", "financial", "music", "fitness"]
     )
     honorific: str = "sir"
+    language: str = ""  # Briefing language, e.g. "es". Empty = English
     voice_id: str = ""
     voice_speed: float = 1.0
     tts_backend: str = "cartesia"

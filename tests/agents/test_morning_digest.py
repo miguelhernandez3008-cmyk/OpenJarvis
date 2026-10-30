@@ -81,3 +81,22 @@ def test_load_persona():
     # Nonexistent persona returns empty string
     result = _load_persona("nonexistent_persona_xyz")
     assert result == ""
+
+
+def test_build_system_prompt_language():
+    from datetime import datetime
+
+    from openjarvis.agents.morning_digest import MorningDigestAgent, _format_date
+
+    agent = MorningDigestAgent(
+        MagicMock(), "test-model", tools=[], sections=["world"], language="es"
+    )
+    prompt = agent._build_system_prompt()
+    assert "ENTIRE briefing in Spanish" in prompt
+
+    english = MorningDigestAgent(MagicMock(), "test-model", tools=[])
+    assert "ENTIRE briefing" not in english._build_system_prompt()
+
+    day = datetime(2026, 10, 30)
+    assert _format_date(day, "es-MX") == "viernes 30 de octubre de 2026"
+    assert _format_date(day, "") == "Friday, October 30, 2026"

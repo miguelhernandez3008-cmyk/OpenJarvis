@@ -1,0 +1,77 @@
+# Mi Jarvis en español — Claude en la nube + Telegram + resumen de la mañana
+#
+# Instalar (desde la carpeta del repo):
+#   uv run python scripts/mi_jarvis/instalar.py
+#
+# Antes de arrancar, define estas variables de entorno (ver scripts/mi_jarvis/LEEME.md):
+#   ANTHROPIC_API_KEY   — tu clave de https://console.anthropic.com
+#   TELEGRAM_BOT_TOKEN  — el token que te da @BotFather
+#
+# Uso:
+#   jarvis chat              # chatear en la terminal
+#   jarvis gui               # interfaz gráfica en el navegador
+#   jarvis serve             # servidor + bot de Telegram
+#   jarvis digest --fresh    # generar el resumen de la mañana
+
+# ── Modelo: Claude en la nube ────────────────────────────────────
+[engine]
+default = "cloud"
+
+[intelligence]
+default_model = "claude-sonnet-4-6"    # Buena calidad para el día a día
+# default_model = "claude-haiku-4-5"   # Más barato y rápido
+# default_model = "claude-opus-4-6"    # El más capaz (y el más caro)
+temperature = 0.4
+
+# ── Agente: siempre en español ───────────────────────────────────
+[agent]
+default_agent = "orchestrator"
+tools = "think,calculator,web_search,get_weather"
+default_system_prompt = """Eres Jarvis, el asistente personal de IA de Miguel. \
+Responde SIEMPRE en español, aunque te escriban o te pasen información en otro \
+idioma. Si te preguntan quién eres, di que eres Jarvis, su asistente personal. \
+Sé útil, claro y conciso."""
+
+# ── Telegram: hablarle desde el celular ──────────────────────────
+[channel]
+enabled = true
+default_channel = "telegram"
+default_agent = "orchestrator"
+
+[channel.telegram]
+# El token se lee de la variable TELEGRAM_BOT_TOKEN; no lo pegues aquí.
+# Pon tu chat ID (pídeselo a @userinfobot en Telegram) para que el bot
+# solo te responda a ti. Si lo dejas vacío, le responde a cualquiera.
+allowed_chat_ids = ""
+parse_mode = "Markdown"
+
+# ── Voz en español ───────────────────────────────────────────────
+[speech]
+language = "es"
+tts_backend = "kokoro"
+voice_id = "em_alex"        # Voz masculina en español (ef_dora = femenina)
+
+# ── Resumen de la mañana ─────────────────────────────────────────
+[digest]
+enabled = true
+language = "es"
+persona = "jarvis_es"
+honorific = "Miguel"
+timezone = "America/Bogota"   # Cambia a tu zona: America/Mexico_City, Europe/Madrid…
+schedule = "0 7 * * *"        # Todos los días a las 7:00
+tts_backend = "kokoro"
+voice_id = "em_alex"
+sections = ["messages", "calendar", "world"]
+
+[digest.messages]
+sources = ["gmail", "google_tasks"]
+
+[digest.calendar]
+sources = ["gcalendar"]
+
+[digest.world]
+sources = ["weather", "news_rss"]
+
+[server]
+host = "127.0.0.1"
+port = 8000

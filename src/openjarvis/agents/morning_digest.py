@@ -25,11 +25,59 @@ _SECTION_PROMPTS = {
     "music": "MUSIC — Summarize only provided listening information.",
 }
 
+# Weekday and month names for languages whose dates we format ourselves, so
+# the date in the prompt matches the briefing language regardless of locale.
+_DATE_NAMES = {
+    "es": (
+        ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
+        [
+            "enero",
+            "febrero",
+            "marzo",
+            "abril",
+            "mayo",
+            "junio",
+            "julio",
+            "agosto",
+            "septiembre",
+            "octubre",
+            "noviembre",
+            "diciembre",
+        ],
+    ),
+}
+
+_LANGUAGE_NAMES = {"es": "Spanish"}
+
+
+def _language_code(language: str) -> str:
+    """Normalize ``"es"``, ``"es-MX"`` or ``"Spanish"`` to a short code."""
+    lang = language.strip().casefold()
+    if lang in ("spanish", "español", "espanol"):
+        return "es"
+    return lang.split("-")[0].split("_")[0]
+
+
+def _format_date(now: datetime, language: str) -> str:
+    """Format today's date in *language*, falling back to English."""
+    names = _DATE_NAMES.get(_language_code(language))
+    if names is None:
+        return now.strftime("%A, %B %d, %Y")
+    days, months = names
+    return f"{days[now.weekday()]} {now.day} de {months[now.month - 1]} de {now.year}"
+
 
 def _load_persona(persona_name: str) -> str:
     """Load a persona prompt file by name."""
     search_paths = [
         Path("configs/openjarvis/prompts/personas") / f"{persona_name}.md",
+        # Source checkout, so personas resolve when jarvis runs from any folder.
+        Path(__file__).resolve().parents[3]
+        / "configs"
+        / "openjarvis"
+        / "prompts"
+        / "personas"
+        / f"{persona_name}.md",
         get_config_dir() / "prompts" / "personas" / f"{persona_name}.md",
     ]
     for p in search_paths:
@@ -57,6 +105,7 @@ class MorningDigestAgent(ToolUsingAgent):
         self._tts_backend = kwargs.pop("tts_backend", "cartesia")
         self._digest_store_path = kwargs.pop("digest_store_path", "")
         self._honorific = kwargs.pop("honorific", "sir")
+        self._language = kwargs.pop("language", "")
         super().__init__(*args, **kwargs)
 
     def _build_system_prompt(self) -> str:
@@ -74,9 +123,19 @@ class MorningDigestAgent(ToolUsingAgent):
             for section in sections
         )
 
+        language = getattr(self, "_language", "")
+        language_rule = ""
+        if language:
+            code = _language_code(language)
+            language_name = _LANGUAGE_NAMES.get(code, language)
+            language_rule = (
+                f"\n- Write the ENTIRE briefing in {language_name}, including "
+                "dates, times and the honorific. Never answer in English."
+            )
+
         return (
             f"{persona_text}\n\n"
-            f"Today is {now.strftime('%A, %B %d, %Y')}. "
+            f"Today is {_format_date(now, language)}. "
             f"The time is {now.strftime('%I:%M %p')} in {self._timezone}.\n"
             f"The user's preferred honorific is: {honorific}\n\n"
             "You receive structured data from the user's connected services. "
@@ -95,6 +154,7 @@ class MorningDigestAgent(ToolUsingAgent):
             "- Acknowledge every source that returned data, even briefly.\n"
             "- No markdown, emojis, bullets, or headers.\n"
             "- STRICT LIMIT: 200 words. Be concise."
+            f"{language_rule}"
         )
 
     def _resolve_sources(self) -> List[str]:

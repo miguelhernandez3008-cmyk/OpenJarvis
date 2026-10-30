@@ -516,6 +516,7 @@ class Jarvis:
                     "voice_speed": dc.voice_speed,
                     "tts_backend": dc.tts_backend,
                     "honorific": dc.honorific,
+                    "language": dc.language,
                 }
             )
             # Ensure digest agent always has its required tools
