@@ -72,6 +72,20 @@ sources = ["gcalendar"]
 [digest.world]
 sources = ["weather", "news_rss"]
 
+# ── Agente Jarvis: avisos al celular ─────────────────────────────
+# Formato de los canales: "tipo:destino"
+#   Telegram → "telegram:TU_CHAT_ID"          (pídeselo a @userinfobot)
+#   WhatsApp → "whatsapp_baileys:57300XXXXXXX" (tu número con código de país)
+[jarvis]
+health_channel = "telegram:"                    # Mensaje de salud cada mañana
+health_sources = ["gcalendar", "weather"]       # Agrega "oura" si tienes anillo Oura
+email_channel = "whatsapp_baileys:"             # Avisos de correos importantes
+email_sources = ["gmail"]
+email_hours_back = 6
+
+[agent_manager]
+enabled = true
+
 [server]
 host = "127.0.0.1"
 port = 8000

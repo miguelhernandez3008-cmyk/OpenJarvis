@@ -5,6 +5,9 @@ Esta configuración deja a Jarvis:
 - **Respondiendo siempre en español**, en el chat y en el resumen de la mañana (también por voz).
 - **Conectado a Telegram**, para hablarle desde el celular.
 - **Usando Claude en la nube**, así no necesitas una computadora potente.
+- **Mandándote avisos solo**:
+  - 🩺 **Salud**: cada mañana a las 7:00 te manda por Telegram un mensaje de salud (tu calendario, el clima y tus metas).
+  - 📬 **Correos**: cada 30 minutos revisa tu Gmail y te avisa por WhatsApp **solo** de los correos importantes. Nunca repite uno que ya te avisó.
 
 ---
 
@@ -15,20 +18,21 @@ Abre **PowerShell** y ejecuta:
 ```powershell
 winget install --id Git.Git -e
 winget install --id astral-sh.uv -e
+winget install --id OpenJS.NodeJS.LTS -e
 ```
 
+Node.js hace falta para WhatsApp y para la interfaz gráfica.
 Cierra PowerShell y ábrelo de nuevo para que reconozca los programas.
 
 ## 2. Descarga tu copia del proyecto
 
 ```powershell
-cd $HOME
-git clone -b personalizacion-es https://github.com/miguelhernandez3008-cmyk/OpenJarvis.git
-cd OpenJarvis
+git clone -b personalizacion-es https://github.com/miguelhernandez3008-cmyk/OpenJarvis.git "$env:LOCALAPPDATA\OpenJarvis\src"
+cd "$env:LOCALAPPDATA\OpenJarvis\src"
 uv sync --extra inference-cloud --extra channel-telegram --extra voice --extra server
 ```
 
-La primera vez tarda unos minutos.
+La primera vez tarda unos minutos. Desde aquí, todos los comandos se ejecutan dentro de esa carpeta.
 
 ## 3. Consigue tu clave de Claude
 
@@ -50,43 +54,74 @@ setx ANTHROPIC_API_KEY "sk-ant-PEGA-TU-CLAVE-AQUI"
 setx TELEGRAM_BOT_TOKEN "PEGA-TU-TOKEN-AQUI"
 ```
 
-4. **Importante, por seguridad:** busca **@userinfobot** en Telegram y envíale cualquier mensaje. Te responde con tu **Id** (un número). Así el bot solo te responde a ti.
+4. Busca **@userinfobot** en Telegram y envíale cualquier mensaje. Te responde con tu **Id** (un número). Lo usarás en el paso 5.
+5. Abre el chat con **tu** bot y pulsa **Iniciar**. Si no lo haces, Telegram no le permite escribirte.
 
 Cierra PowerShell y ábrelo de nuevo para que tome las claves.
 
 ## 5. Instala la configuración
 
 ```powershell
-cd $HOME\OpenJarvis
+cd "$env:LOCALAPPDATA\OpenJarvis\src"
 uv run python scripts/mi_jarvis/instalar.py
 ```
 
-Luego abre el archivo de configuración:
+Esto copia la configuración y crea los dos agentes de Jarvis (**Salud** y **Correos**). Luego abre la configuración:
 
 ```powershell
 notepad $HOME\.openjarvis\config.toml
 ```
 
-y edita dos cosas:
+y completa estos datos (cambia los números por los tuyos):
 
-- `allowed_chat_ids = ""`: pon tu Id de Telegram entre las comillas, por ejemplo `allowed_chat_ids = "123456789"`.
-- `timezone = "America/Bogota"`: cámbialo a tu zona horaria (por ejemplo `America/Mexico_City` o `Europe/Madrid`).
+| Línea | Qué poner | Ejemplo |
+|---|---|---|
+| `allowed_chat_ids` | Tu Id de Telegram, para que el bot solo te responda a ti | `allowed_chat_ids = "123456789"` |
+| `health_channel` | `telegram:` + tu Id de Telegram | `health_channel = "telegram:123456789"` |
+| `email_channel` | `whatsapp_baileys:` + tu número con código de país, sin `+` | `email_channel = "whatsapp_baileys:573001234567"` |
+| `timezone` | Tu zona horaria | `"America/Bogota"`, `"America/Mexico_City"` o `"Europe/Madrid"` |
 
-## 6. ¡A usarlo!
+Si cambias la zona horaria, vuelve a ejecutar `instalar.py` para que los agentes usen la hora correcta.
+
+Edita también tus metas de salud (agua, ejercicio, medicamentos…) en:
+
+```powershell
+notepad $HOME\.openjarvis\USER.md
+```
+
+## 6. Conecta Gmail, Calendar y WhatsApp (una sola vez)
+
+```powershell
+uv run jarvis connect gdrive                      # Gmail, Calendar y Tasks con tu cuenta de Google
+uv run python scripts/mi_jarvis/vincular_whatsapp.py
+```
+
+El segundo comando muestra un **código QR**. En tu celular abre **WhatsApp → Configuración → Dispositivos vinculados → Vincular un dispositivo** y escanéalo. Jarvis te enviará un mensaje de prueba en el chat **contigo mismo**.
+
+> ⚠️ **Sobre WhatsApp:** esta conexión funciona como WhatsApp Web (un "dispositivo vinculado"). No es la API oficial para empresas, así que WhatsApp podría limitarla. Como Jarvis solo te escribe a ti y pocas veces, el riesgo es bajo. Si algún día deja de funcionar, cambia `email_channel` a `telegram:TU_ID` y los avisos de correos te llegarán por Telegram.
+
+## 7. ¡A usarlo!
 
 ```powershell
 uv run jarvis doctor     # revisa que todo esté bien
 uv run jarvis chat       # chatea en la terminal
-uv run jarvis gui        # interfaz gráfica en el navegador (requiere Node.js 22+)
-uv run jarvis serve      # deja el bot de Telegram escuchando
+uv run jarvis gui        # interfaz gráfica en el navegador
+uv run jarvis serve      # Jarvis completo: bot de Telegram + avisos de salud y correos
 ```
 
-Con `jarvis serve` corriendo, abre tu bot en Telegram y escríbele "hola".
+**Importante:** los avisos y el bot de Telegram solo funcionan mientras `jarvis serve` está corriendo y la computadora está encendida.
 
-### Resumen de la mañana
+### Que Jarvis arranque solo al encender la computadora
 
 ```powershell
-uv run jarvis connect gdrive   # conecta Gmail, Calendar y Tasks (una sola vez)
+powershell -ExecutionPolicy Bypass -File deploy\windows\jarvis-service.ps1 install
+```
+
+Para quitarlo: el mismo comando cambiando `install` por `uninstall`.
+
+### Resumen de la mañana con voz
+
+```powershell
 uv run jarvis digest --fresh   # genera y reproduce el resumen
 ```
 
@@ -98,12 +133,16 @@ uv run jarvis digest --fresh   # genera y reproduce el resumen
 
 ## Personalizar
 
-| Quiero cambiar… | Archivo |
+| Quiero cambiar… | Dónde |
 |---|---|
 | La personalidad de Jarvis en el chat | `~/.openjarvis/SOUL.md` |
-| Lo que Jarvis sabe de mí | `~/.openjarvis/USER.md` |
-| El modelo, las herramientas o el horario del resumen | `~/.openjarvis/config.toml` |
-| La personalidad del resumen de la mañana | `~/.openjarvis/prompts/personas/jarvis_es.md` |
+| Lo que Jarvis sabe de mí y mis metas de salud | `~/.openjarvis/USER.md` |
+| A dónde llegan los avisos, o qué fuentes revisa | sección `[jarvis]` de `~/.openjarvis/config.toml` |
+| La hora del mensaje de salud o cada cuánto revisa correos | `AGENTES` en `scripts/mi_jarvis/instalar.py`, y luego vuelve a ejecutarlo |
+| Qué considera "correo importante" | `_CORREOS_PROMPT` en `src/openjarvis/agents/jarvis_avisos.py` |
+| El modelo o las herramientas del chat | `~/.openjarvis/config.toml` |
 
 Los originales están en esta carpeta (`scripts/mi_jarvis/`) y en `configs/openjarvis/examples/mi-jarvis-es.toml`.
-Si vuelves a ejecutar `instalar.py`, antes de reemplazar tus archivos guarda una copia de respaldo.
+Puedes volver a ejecutar `instalar.py` cuando quieras: **conserva** tu `config.toml`, `SOUL.md` y `USER.md`
+y solo actualiza los agentes. Para volver a los originales usa `instalar.py --forzar`; antes guarda una copia
+de respaldo de tus archivos (`*.respaldo-…`).

@@ -1767,6 +1767,23 @@ class DigestConfig:
     )
 
 
+@dataclass(slots=True)
+class JarvisAgentsConfig:
+    """Destinations and sources for the ``jarvis_salud`` / ``jarvis_correos`` agents.
+
+    Channels use the ``"{type}:{id}"`` format of ``[proactive]``, e.g.
+    ``"telegram:123456789"`` or ``"whatsapp_baileys:573001234567"``.
+    """
+
+    health_channel: str = ""
+    health_sources: List[str] = field(
+        default_factory=lambda: ["oura", "apple_health", "gcalendar", "weather"]
+    )
+    email_channel: str = ""
+    email_sources: List[str] = field(default_factory=lambda: ["gmail"])
+    email_hours_back: int = 6
+
+
 @dataclass
 class JarvisConfig:
     """Top-level configuration for OpenJarvis."""
@@ -1801,6 +1818,7 @@ class JarvisConfig:
     skills: SkillsConfig = field(default_factory=SkillsConfig)
     digest: DigestConfig = field(default_factory=DigestConfig)
     proactive: ProactiveConfig = field(default_factory=ProactiveConfig)
+    jarvis: JarvisAgentsConfig = field(default_factory=JarvisAgentsConfig)
     mining: Optional["MiningConfig"] = None
 
     @property
@@ -2127,6 +2145,7 @@ def load_config(path: Optional[Path] = None) -> JarvisConfig:
             "agent_manager",
             "digest",
             "proactive",
+            "jarvis",
             "memory_files",
             "system_prompt",
             "compression",
